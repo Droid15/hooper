@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐播放器</title>
+</head>
+<body>
+    <div class="music-main">
+        <div id="music-title"></div>
+
+        <div id="music-bar">
+            <video id="music_box" autoplay src="" onplay="playModel()" onpause="pauseModel()"></video>
+        </div>
+
+        <div id="function-bar">
+            <div class="func-btn" onclick="showMenu()">歌单</div>
+            <div class="func-btn" id="play_mode" onclick="changePlay()">随机播放</div>
+            <div class="func-btn" onclick="chooseMusic()">添加音乐</div>
+        </div>
+
+        <div class="music-pan">
+            <div id="music-list"></div>    
+        </div>
+        <div class="controls-box">
+            <div class="controls-bar">
+                <div class="controls-btn" id="play-up" onclick="playOne(1)">上一曲</div>
+                <div class="controls-btn triangle" id="play-btn" onclick="play()"></div>
+                <div class="controls-btn" id="play-down" onclick="playOne()">下一曲</div>
+                <div class="controls-btn" id="show-time">00:00 / 00:00</div>    
+            </div>
+        </div>
+    </div>
+</body>
+<style>
+    .music-main{
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: linear-gradient(to bottom right,#fbd4aa, #fbd);
+    }
+    #music-bar{
+        width: 100%;
+        position: fixed;
+        bottom: 0;
+        text-align: center;
+        padding-bottom: 8vh;
+    }
+    #function-bar{
+        width: 100%;
+        height: 50px;
+        margin: 0;
+    }
+    .func-btn{
+        width: 80px;
+        height: 30px;
+        line-height: 30px;
+        text-align: center;
+        border: 1px solid #888;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 10px auto;
+        float: right;
+        margin-right: 10px;
+    }
+    #music-list{
+        height: 90vh;
+    }
+    .music-pan{
+        position: fixed;
+        right: 10px;
+        z-index: 1000;
+        overflow-y: auto;
+        user-select: none;
+        border: 1px solid #888;
+        padding: 5px;
+        border-radius: 8px;
+        background: #6666664f;
+    }
+    .music-pan::-webkit-scrollbar {
+        display: none;
+    }
+    li{
+        cursor: pointer;
+    }
+    li:hover{
+        color: #f4039d;
+    }
+    #music_box{
+        display: none;
+    }
+    .controls-box{
+        position: fixed;
+        bottom: 0;
+        text-align: center;
+        width: 100%;
+        line-height: 50px;
+        display: flex;
+        justify-content: center;
+        user-select: none;
+    }
+    #play-btn{
+        cursor: pointer;
+    }
+    .controls-btn{
+        width: 100px;
+        text-align: center;
+        float: left;
+        cursor: pointer;
+    }
+    #play-down {
+        width: 80px;
+    }
+    .controls-bar{
+        width: 410px;
+        border-radius: 20px;
+        text-align: center;
+        background: #6666664f;
+        margin-bottom: 20px;
+    }
+    #show-time{
+        cursor: auto;
+    }
+    .triangle{
+        width: 0;
+        height: 0;
+        border-top: 15px solid transparent;
+        border-bottom: 15px solid transparent;
+        border-left: 25px solid #333;
+        border-right: 15px solid transparent;
+        font-size: 1rem;
+        line-height: 0px;
+        margin-top: 12px;
+        margin-left: 40px;
+        padding-left: 20px;
+    }
+    .pause{
+        font-size: 1.2rem;
+        font-weight: 1000;
+    }
+    .show-menu{
+        animation-name: showmenue ;
+        width: 20%;
+        animation-duration: 1s;
+    }
+    .hidden-menu{
+        animation-name: removemenue;
+        width: 0px;
+        padding: 0;
+        border: 0;
+        animation-duration: 1s;
+    }
+
+    #music-title {
+        animation-name: rainbow;
+        position: fixed;
+        text-align: center;
+        width: 100%;
+        font-size: 1.2rem;
+        line-height: 50px;
+        color: darkorchid;
+        animation-duration: 5s;
+        animation-iteration-count: infinite;
+        top: 30px;
+    }
+
+    @keyframes removemenue
+    {
+        from {width:285px;}
+        to {width:0px;}
+    }
+
+    @keyframes showmenue
+    {
+        from {width:0px;}
+        to {width:20%;}
+    }
+
+    @keyframes rainbow
+    {
+        0% { color: darkorchid; }
+        25% { color: green; }
+        50% { color: orange; }
+        75% { color: blue;}
+        100% { color:  red; }
+    }
+</style>
+<script>
+    //谷歌浏览器支持的后缀
+    var ext = ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'mp4', 'webm', 'acc'];
+
+    //音乐列表
+    var music_list = [];
+
+    //音乐播放列表标签
+    var mlist = document.getElementById('music-list');
+
+    //进度条定时器
+    var show_play_time=0;
+
+    //当前是否在播放音乐
+    var playing = false;
+
+    //初始化
+    window.onload = function(){
+        if(localStorage.music_list){
+            try{
+                var list = JSON.parse(localStorage.music_list);
+                music_list = list;
+                mlist.innerHTML = '';
+                for(let m of list){
+                    showMusicList(m);
+                }
+            }catch(e){
+                console.log(e);
+            }
+        }
+        
+        var modeBtn = document.getElementById('play_mode');
+        if(localStorage.play_mode==1){
+            modeBtn.innerHTML = '顺序播放';
+        }else{
+            modeBtn.innerHTML = '随机播放';
+        }
+    }
+
+    //选择音乐
+    function chooseMusic() {
+        var file_tag = document.createElement('input');
+        file_tag.type="file";
+        file_tag.multiple = 'multiple';
+        file_tag.style.display = 'none';
+        document.body.append(file_tag);
+        file_tag.click();
+
+        //选择完音乐就把音乐添加到列表
+        file_tag.onchange = function(e){
+            // mlist.innerHTML = '';
+            for(let list of file_tag.files){
+                var name_len = list.name.split('.').length;
+                if(ext.indexOf(list.name.split('.')[name_len-1])==-1 && ext.indexOf(list.name.split('.')[name_len-1].toLocaleUpperCase())==-1){
+                    continue ;
+                }
+                music_list.push(list.name);
+                showMusicList(list.name);
+            }
+            localStorage.music_list = JSON.stringify(music_list);
+        }
+    }
+
+    //展示音乐列表
+    function showMusicList(name) {
+        var myli = document.createElement('li');
+        myli.innerHTML = name;
+        mlist.appendChild(myli);
+
+        //点击音乐就播放
+        myli.onclick = function(e){
+            document.getElementById('music_box').src = e.target.innerText;
+            document.title = e.target.innerText;
+            document.getElementById('music-title').innerHTML = e.target.innerText;
+        }
+    }
+
+    //下一首要播放的歌
+    function playNext(music_name) {
+        var next_one;
+        for(let idx in music_list){
+            if(music_list[idx]==music_name){
+                next_one = music_list[idx-0+1]? music_list[idx-0+1] : music_list[0];
+                break;
+            }
+        }
+        console.log('下一首是：'+next_one);
+        if(next_one){
+            document.getElementById('music_box').src = next_one;
+            document.title = next_one;
+            document.getElementById('music-title').innerHTML = next_one;
+        }
+    }
+
+    //随机播放一首(实际体验下来感觉可能把播放列表打乱后顺序播放更符合普通人预期)
+    function randowPlay(){
+        var random_idx = parseInt(Math.random()*100);
+        if(typeof music_list[random_idx] != 'undefined'){
+            playNext(music_list[random_idx]);
+            return music_list[random_idx];
+        }
+
+        var max_len = music_list.length;        
+        var result = parseInt(random_idx%max_len);
+        playNext(music_list[result]);
+    }
+
+    //更改播放模式
+    function changePlay() {
+        var modeBtn = document.getElementById('play_mode');
+        localStorage.play_mode = localStorage.play_mode? localStorage.play_mode : 0;
+        localStorage.play_mode = localStorage.play_mode==0? 1 : 0;
+
+        if(localStorage.play_mode==1){
+            modeBtn.innerHTML = '顺序播放';
+            // playNext('');
+        }else{
+            modeBtn.innerHTML = '随机播放';
+            // randowPlay();
+        }
+    }
+
+    //播放结束事件
+    document.getElementById('music_box').onended = function(e){
+        //随机播放
+        if(1==localStorage.play_mode){
+            randowPlay();
+            return false;
+        }
+        var len = e.target.src.split('/').length;
+        playNext(decodeURI(e.target.src.split('/')[len-1]));
+    }
+
+    //显示播放时间
+    function showTime(){
+        let pnow = document.getElementById('music_box').currentTime;
+        let total = document.getElementById('music_box').duration;
+        total = total? total : 0;
+
+        let m = parseInt(pnow/60);
+        let s = parseInt(pnow%60);
+        m = m<10? '0'+m : m;
+        s = s<10? '0'+s : s;
+
+        let mm = parseInt(total/60);
+        let ss = parseInt(total%60);
+        mm = mm<10? '0'+mm : mm;
+        ss = ss<10? '0'+ss : ss;
+
+
+        return m+':'+s+' / '+mm+':'+ss;
+    }
+
+    //暂停事件
+    function pauseModel(){
+        playing = false;
+        clearInterval(show_play_time);
+        show_play_time=0;
+        document.getElementById('play-btn').innerHTML = '';
+        document.getElementById('play-btn').className = 'controls-btn triangle';
+    }
+
+    //播放事件
+    function playModel(){
+        playing = true;
+        document.getElementById('show-time').innerHTML = showTime(); //立即触发一次
+        if(show_play_time==0){
+            show_play_time = setInterval(()=>{
+                document.getElementById('show-time').innerHTML = showTime();
+            },1000);    
+            document.getElementById('play-btn').innerHTML = '||';
+            document.getElementById('play-btn').className = 'controls-btn pause';
+        }
+
+    }
+
+    //播放
+    function play(){
+
+        //暂停
+        if(playing){
+            document.getElementById('music_box').pause();
+            return false;
+        }
+
+        //没有正在播放的歌曲，随机播放一首
+        if(document.getElementById('music_box').src.indexOf('.html')!=-1){
+            localStorage.play_mode==1? randowPlay() : document.getElementById('music_box').src = music_list[0];
+        }else{
+            document.getElementById('music_box').play(); 
+        }        
+    }
+
+    //切换歌曲
+    function playOne(flag) {
+        if(localStorage.play_mode==1){
+            randowPlay(); return ;
+        }
+        let now_playing = document.getElementById('music_box').src;
+        if(now_playing.indexOf('.html')!=-1){
+            now_playing = music_list[0];
+            return ;
+        }
+
+        let arr = now_playing.split('/');
+        let the_sone = decodeURI(arr[arr.length-1]);
+        let the_sone_idx = 0;
+        for(let idx in music_list){
+            if(music_list[idx]==the_sone){
+                the_sone_idx = idx;
+                break;
+            }
+        }
+        //上一曲
+        if(1==flag){
+            if(the_sone_idx==0){
+                document.getElementById('music_box').src = music_list[0];
+            }else{
+                document.getElementById('music_box').src = music_list[the_sone_idx-0-1];
+            }
+            return ;
+        }
+
+        //下一曲
+        playNext(the_sone);
+    }
+    
+    //歌单控制
+    function showMenu() {
+        let ele = document.getElementsByClassName('music-pan');
+        if(ele[0].className=='music-pan' || ele[0].className=='music-pan show-menu'){
+            ele[0].className = 'music-pan hidden-menu';
+        }else{
+            ele[0].className = 'music-pan show-menu';
+        }
+    }
+</script>
+</html>
