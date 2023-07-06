@@ -244,6 +244,7 @@
                     continue ;
                 }
                 music_list.push(list.name);
+                music_list = [...new Set(music_list)];
                 showMusicList(list.name);
             }
             localStorage.music_list = JSON.stringify(music_list);
@@ -373,7 +374,6 @@
             }
             now_play.style.color = '#f4039d';
             location.href = "#"+song_id;
-            now_play.offsetTop = 100;
         }
     }
 
