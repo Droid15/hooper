@@ -22,6 +22,7 @@
         <div class="music-pan">
             <div id="music-list"></div>    
         </div>
+        <div id="lyric-box"></div>
         <div class="controls-box">
             <div class="controls-bar">
                 <div class="controls-btn" id="play-up" onclick="playOne(1)">上一曲</div>
@@ -219,11 +220,7 @@
         }
         
         var modeBtn = document.getElementById('play_mode');
-        if(localStorage.play_mode==1){
-            modeBtn.innerHTML = '顺序播放';
-        }else{
-            modeBtn.innerHTML = '随机播放';
-        }
+        modeBtn.innerHTML = localStorage.play_mode==1? '随机播放' : '顺序播放';
     }
 
     //选择音乐
@@ -267,6 +264,12 @@
         }
     }
 
+    function playNow(song){
+        document.getElementById('music_box').src = song;
+        document.title = song;
+        document.getElementById('music-title').innerHTML = song;
+    }
+
     //下一首要播放的歌
     function playNext(music_name) {
         var next_one;
@@ -278,23 +281,45 @@
         }
         console.log('下一首是：'+next_one);
         if(next_one){
-            document.getElementById('music_box').src = next_one;
-            document.title = next_one;
-            document.getElementById('music-title').innerHTML = next_one;
+            playNow(next_one);
         }
     }
 
     //随机播放一首(实际体验下来感觉可能把播放列表打乱后顺序播放更符合普通人预期)
     function randowPlay(){
-        var random_idx = parseInt(Math.random()*100);
-        if(typeof music_list[random_idx] != 'undefined'){
-            playNext(music_list[random_idx]);
-            return music_list[random_idx];
+        console.log("sdsdsd");
+        var random_list = localStorage.getItem('random_music_list') || '[]';
+        random_list = JSON.parse(random_list);
+        if(random_list.length>0){
+            var pop_song = random_list.pop();
+            localStorage.setItem('random_music_list', JSON.stringify(random_list));
+            playNow(pop_song);
+            return false;
         }
 
-        var max_len = music_list.length;        
-        var result = parseInt(random_idx%max_len);
-        playNext(music_list[result]);
+        var tmp_music_list = music_list;
+        while(true){
+            if(tmp_music_list.length==0){
+                break;
+            }
+            var random_idx = parseInt(Math.random()*100);
+            if(typeof tmp_music_list[random_idx] != 'undefined'){
+                var take_one = tmp_music_list.splice(random_idx,1)[0];
+                random_list.push(take_one);
+            }else{
+                var max_len = tmp_music_list.length;        
+                var result = parseInt(random_idx%max_len);
+                random_list.push(tmp_music_list.splice(result,1)[0]);
+            }
+        }
+        // console.log(random_list);
+        if(random_list.length>0){
+            var pop_song = random_list.pop();
+            localStorage.setItem('random_music_list', JSON.stringify(random_list));
+            playNow(pop_song);
+            return false;
+        }
+        
     }
 
     //更改播放模式
@@ -302,14 +327,7 @@
         var modeBtn = document.getElementById('play_mode');
         localStorage.play_mode = localStorage.play_mode? localStorage.play_mode : 0;
         localStorage.play_mode = localStorage.play_mode==0? 1 : 0;
-
-        if(localStorage.play_mode==1){
-            modeBtn.innerHTML = '顺序播放';
-            // playNext('');
-        }else{
-            modeBtn.innerHTML = '随机播放';
-            // randowPlay();
-        }
+        modeBtn.innerHTML = localStorage.play_mode==1? '随机播放' : '顺序播放';
     }
 
     //播放结束事件
